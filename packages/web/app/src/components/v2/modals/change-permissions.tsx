@@ -1,6 +1,7 @@
 import { ReactElement } from 'react';
 import { PermissionsSpace, usePermissionsManager } from '@/components/organization/Permissions';
-import { Accordion, Button, Heading, Modal } from '@/components/v2';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button, Heading, Modal } from '@/components/v2';
 import { FragmentType, graphql, useFragment } from '@/gql';
 import { scopes } from '@/lib/access/common';
 
@@ -10,7 +11,7 @@ const ChangePermissionsModal_OrganizationFragment = graphql(`
   }
 `);
 
-const ChangePermissionsModal_MemberFragment = graphql(`
+export const ChangePermissionsModal_MemberFragment = graphql(`
   fragment ChangePermissionsModal_MemberFragment on Member {
     ...UsePermissionManager_MemberFragment
   }
@@ -37,9 +38,14 @@ export function ChangePermissionsModal({
 
   return (
     <Modal open={isOpen} onOpenChange={toggleModalOpen} className="w-[600px]">
-      <form className="flex flex-col items-center gap-5" onSubmit={manager.submit}>
+      <form className="flex w-full flex-col items-center gap-5" onSubmit={manager.submit}>
         <Heading>Permissions</Heading>
-        <Accordion defaultValue="Organization">
+        <Tabs defaultValue="Organization" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="Organization">Organization</TabsTrigger>
+            <TabsTrigger value="Projects">Projects</TabsTrigger>
+            <TabsTrigger value="Targets">Targets</TabsTrigger>
+          </TabsList>
           <PermissionsSpace
             title="Organization"
             scopes={scopes.organization}
@@ -48,20 +54,20 @@ export function ChangePermissionsModal({
             checkAccess={manager.canAccessOrganization}
           />
           <PermissionsSpace
-            title="All Projects"
+            title="Projects"
             scopes={scopes.project}
             initialScopes={manager.projectScopes}
             onChange={manager.setProjectScopes}
             checkAccess={manager.canAccessProject}
           />
           <PermissionsSpace
-            title="All targets"
+            title="Targets"
             scopes={scopes.target}
             initialScopes={manager.targetScopes}
             onChange={manager.setTargetScopes}
             checkAccess={manager.canAccessTarget}
           />
-        </Accordion>
+        </Tabs>
         <div className="flex w-full gap-2">
           <Button type="button" size="large" block onClick={toggleModalOpen}>
             Cancel

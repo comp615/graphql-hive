@@ -1,7 +1,15 @@
 import { FormEventHandler, memo, ReactElement, useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { useMutation } from 'urql';
-import { Accordion, RadixSelect, Tooltip } from '@/components/v2';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { TabsContent } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FragmentType, graphql, useFragment } from '@/gql';
 import { OrganizationAccessScope, ProjectAccessScope, TargetAccessScope } from '@/graphql';
 import { NoAccess, Scope } from '@/lib/access/common';
@@ -35,6 +43,18 @@ interface Props<T> {
   onChange: (scopes: T[]) => void;
   checkAccess: (scope: T) => boolean;
   isReadOnly?: boolean;
+  noDowngrade?: boolean;
+}
+
+function isLowerOrEqualThen<T>(
+  targetScope: T,
+  sourceScope: T,
+  scopesInLowerToHigherOrder: readonly T[],
+) {
+  const sourceIndex = scopesInLowerToHigherOrder.indexOf(sourceScope);
+  const targetIndex = scopesInLowerToHigherOrder.indexOf(targetScope);
+
+  return targetIndex <= sourceIndex;
 }
 
 function matchScope<T, TDefault = string>(
@@ -78,20 +98,21 @@ export const PermissionScopeItem = <
   isReadOnly: boolean;
   onChange: (scopes: T | typeof NoAccess) => void;
   canManageScope: boolean;
+  noDowngrade?: boolean;
   possibleScope: T[];
 }): React.ReactElement => {
   const inner = (
     <div
       key={props.scope.name}
       className={clsx(
-        'flex flex-row items-center justify-between py-2',
-        props.canManageScope === false ? 'opacity-50' : null,
+        'flex flex-row items-center justify-between space-x-4 py-2',
+        props.canManageScope === false ? 'cursor-not-allowed opacity-50' : null,
       )}
     >
       <div>
         <div
           className={clsx(
-            'font-semibold text-gray-600',
+            'font-semibold text-white',
             props.isReadOnly &&
               props.selectedScope !== 'no-access' &&
               props.canManageScope === false
@@ -103,7 +124,7 @@ export const PermissionScopeItem = <
         </div>
         <div
           className={clsx(
-            'text-xs text-gray-600',
+            'text-xs text-gray-400',
             props.isReadOnly &&
               props.selectedScope !== 'no-access' &&
               props.canManageScope === false
@@ -114,44 +135,63 @@ export const PermissionScopeItem = <
           {props.scope.description}
         </div>
       </div>
-      <RadixSelect<T | typeof NoAccess>
-        isDisabled={!props.canManageScope || props.isReadOnly}
-        className="shrink-0"
-        position="popper"
+      <Select
+        disabled={!props.canManageScope || props.isReadOnly}
         value={props.selectedScope}
-        options={[
-          { value: NoAccess, label: 'No access' },
-          props.scope.mapping['read-only'] &&
-            (props.isReadOnly || props.checkAccess(props.scope.mapping['read-only'])) && {
-              value: props.scope.mapping['read-only'],
-              label: 'Read-only',
-            },
-          props.scope.mapping['read-write'] &&
-            (props.isReadOnly || props.checkAccess(props.scope.mapping['read-write'])) && {
-              value: props.scope.mapping['read-write'],
-              label: 'Read & write',
-            },
-        ].filter(truthy)}
-        onChange={value => {
-          props.onChange(value);
+        onValueChange={value => {
+          props.onChange(value as T | typeof NoAccess);
         }}
-      />
+      >
+        <SelectTrigger className="w-[150px] shrink-0">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {[
+            { value: NoAccess, label: 'No access' },
+            props.scope.mapping['read-only'] &&
+              (props.isReadOnly || props.checkAccess(props.scope.mapping['read-only'])) && {
+                value: props.scope.mapping['read-only'],
+                label: 'Read-only',
+              },
+            props.scope.mapping['read-write'] &&
+              (props.isReadOnly || props.checkAccess(props.scope.mapping['read-write'])) && {
+                value: props.scope.mapping['read-write'],
+                label: 'Read & write',
+              },
+          ]
+            .filter(truthy)
+            .map((item, _, all) => {
+              return (
+                <SelectItem
+                  key={item.value}
+                  value={item.value}
+                  disabled={
+                    props.noDowngrade === true &&
+                    isLowerOrEqualThen(
+                      item.value,
+                      props.selectedScope,
+                      all.map(item => item.value),
+                    )
+                  }
+                >
+                  {item.label}
+                </SelectItem>
+              );
+            })}
+        </SelectContent>
+      </Select>
     </div>
   );
 
   return props.canManageScope ? (
     inner
   ) : (
-    <Tooltip
-      content={
-        <>
-          Your user account does not have these permissions, thus it can not issue those to the
-          access token.
-        </>
-      }
-    >
-      {inner}
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>{inner}</TooltipTrigger>
+        <TooltipContent>Your user account does not have these permissions.</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -164,62 +204,58 @@ function PermissionsSpaceInner<
   const { title, scopes, initialScopes, onChange, checkAccess } = props;
 
   return (
-    <Accordion.Item value={title}>
-      <Accordion.Header>{title}</Accordion.Header>
-      <Accordion.Content>
-        {scopes.map(scope => {
-          const possibleScope = [scope.mapping['read-only'], scope.mapping['read-write']].filter(
-            isDefined,
-          );
-          const readOnlyScope = scope.mapping['read-only'];
-          const hasReadOnly = typeof readOnlyScope !== 'undefined';
+    <TabsContent value={title}>
+      {scopes.map(scope => {
+        const possibleScope = [scope.mapping['read-only'], scope.mapping['read-write']].filter(
+          isDefined,
+        );
+        const readOnlyScope = scope.mapping['read-only'];
+        const hasReadOnly = typeof readOnlyScope !== 'undefined';
 
-          return (
-            <PermissionScopeItem<T>
-              scope={scope}
-              key={scope.name}
-              selectedScope={matchScope(
-                props.initialScopes,
-                NoAccess,
-                scope.mapping['read-only'],
-                scope.mapping['read-write'],
-              )}
-              checkAccess={checkAccess}
-              isReadOnly={props.isReadOnly ?? false}
-              possibleScope={possibleScope}
-              canManageScope={possibleScope.some(checkAccess)}
-              onChange={value => {
-                if (value === NoAccess) {
-                  // Remove all possible scopes
-                  onChange(initialScopes.filter(scope => !possibleScope.includes(scope)));
-                  return;
-                }
-                const isReadWrite = value === scope.mapping['read-write'];
+        return (
+          <PermissionScopeItem<T>
+            scope={scope}
+            key={scope.name}
+            selectedScope={matchScope(
+              props.initialScopes,
+              NoAccess,
+              scope.mapping['read-only'],
+              scope.mapping['read-write'],
+            )}
+            checkAccess={checkAccess}
+            isReadOnly={props.isReadOnly ?? false}
+            possibleScope={possibleScope}
+            canManageScope={possibleScope.some(checkAccess)}
+            noDowngrade={props.noDowngrade}
+            onChange={value => {
+              if (value === NoAccess) {
+                // Remove all possible scopes
+                onChange(initialScopes.filter(scope => !possibleScope.includes(scope)));
+                return;
+              }
+              const isReadWrite = value === scope.mapping['read-write'];
 
-                // Remove possible scopes
-                const newScopes = props.initialScopes.filter(
-                  scope => !possibleScope.includes(scope),
-                );
+              // Remove possible scopes
+              const newScopes = props.initialScopes.filter(scope => !possibleScope.includes(scope));
 
-                if (isReadWrite) {
-                  newScopes.push(scope.mapping['read-write']);
+              if (isReadWrite) {
+                newScopes.push(scope.mapping['read-write']);
 
-                  if (hasReadOnly) {
-                    // Include read-only as well
-                    newScopes.push(readOnlyScope);
-                  }
-                } else if (readOnlyScope) {
-                  // just read-only
+                if (hasReadOnly) {
+                  // Include read-only as well
                   newScopes.push(readOnlyScope);
                 }
+              } else if (readOnlyScope) {
+                // just read-only
+                newScopes.push(readOnlyScope);
+              }
 
-                props.onChange(newScopes);
-              }}
-            />
-          );
-        })}
-      </Accordion.Content>
-    </Accordion.Item>
+              props.onChange(newScopes);
+            }}
+          />
+        );
+      })}
+    </TabsContent>
   );
 }
 
