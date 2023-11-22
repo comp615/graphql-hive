@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MoreHorizontalIcon, SettingsIcon } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { MoreHorizontalIcon, MoveDownIcon, MoveUpIcon, SettingsIcon } from 'lucide-react';
 import type { IconType } from 'react-icons';
 import { FaGithub, FaGoogle, FaOpenid, FaUserLock } from 'react-icons/fa';
 import { useMutation } from 'urql';
@@ -315,7 +315,6 @@ function OrganizationMemberRow(props: {
   const [deleteMemberState, deleteMember] = useMutation(OrganizationMemberRow_DeleteMember);
   const IconToUse = authProviderToIconAndTextMap[member.user.provider].icon;
   const authMethod = authProviderToIconAndTextMap[member.user.provider].text;
-
   return (
     <>
       <AlertDialog open={open} onOpenChange={setOpen}>
@@ -430,6 +429,13 @@ const OrganizationMembers_OrganizationFragment = graphql(`
     members {
       nodes {
         id
+        user {
+          displayName
+        }
+        role {
+          id
+          name
+        }
         ...OrganizationMemberRow_MemberFragment
       }
       total
@@ -445,6 +451,46 @@ export function OrganizationMembers(props: {
 }) {
   const organization = useFragment(OrganizationMembers_OrganizationFragment, props.organization);
   const members = organization.members.nodes;
+  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc' | null>(null);
+  const [sortByKey, setSortByKey] = useState<'name' | 'role'>('name');
+
+  const sortedMembers = useMemo(() => {
+    if (!members) {
+      return [];
+    }
+
+    if (!orderDirection) {
+      return members ?? [];
+    }
+
+    const sorted = [...members].sort((a, b) => {
+      if (sortByKey === 'name') {
+        return a.user.displayName.localeCompare(b.user.displayName);
+      }
+
+      if (sortByKey === 'role') {
+        return (a.role?.name ?? 'Select role').localeCompare(b.role?.name ?? 'Select role') ?? 0;
+      }
+
+      return 0;
+    });
+
+    return orderDirection === 'asc' ? sorted : sorted.reverse();
+  }, [members, orderDirection, sortByKey]);
+
+  const updateSorting = useCallback(
+    (newSortBy: 'name' | 'role') => {
+      if (newSortBy === sortByKey) {
+        setOrderDirection(
+          orderDirection === 'asc' ? 'desc' : orderDirection === 'desc' ? null : 'asc',
+        );
+      } else {
+        setSortByKey(newSortBy);
+        setOrderDirection('asc');
+      }
+    },
+    [sortByKey, orderDirection],
+  );
 
   return (
     <div className="space-y-6">
@@ -465,15 +511,42 @@ export function OrganizationMembers(props: {
       <table className="w-full table-auto divide-y-[1px] divide-gray-500/20">
         <thead>
           <tr>
-            <th colSpan={2} className="py-3 text-left text-sm font-semibold">
+            <th
+              colSpan={2}
+              className="relative cursor-pointer select-none py-3 text-left text-sm font-semibold"
+              onClick={() => updateSorting('name')}
+            >
               Member
+              <span className="inline-block">
+                {sortByKey === 'name' ? (
+                  orderDirection === 'asc' ? (
+                    <MoveUpIcon className="relative top-[3px] h-4 w-4" />
+                  ) : orderDirection === 'desc' ? (
+                    <MoveDownIcon className="relative top-[3px] h-4 w-4" />
+                  ) : null
+                ) : null}
+              </span>
             </th>
-            <th className="w-[300px] py-3 text-center text-sm font-semibold">Assigned Role</th>
+            <th
+              className="relative w-[300px] cursor-pointer select-none py-3 text-center align-middle text-sm font-semibold"
+              onClick={() => updateSorting('role')}
+            >
+              Assigned Role
+              <span className="inline-block">
+                {sortByKey === 'role' ? (
+                  orderDirection === 'asc' ? (
+                    <MoveUpIcon className="relative top-[3px] h-4 w-4" />
+                  ) : orderDirection === 'desc' ? (
+                    <MoveDownIcon className="relative top-[3px] h-4 w-4" />
+                  ) : null
+                ) : null}
+              </span>
+            </th>
             <th className="w-12 py-3 text-right text-sm font-semibold" />
           </tr>
         </thead>
         <tbody className="divide-y-[1px] divide-gray-500/20">
-          {members?.map(node => (
+          {sortedMembers.map(node => (
             <OrganizationMemberRow
               key={node.id}
               refetchMembers={props.refetchMembers}

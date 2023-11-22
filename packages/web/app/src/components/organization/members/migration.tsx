@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { differenceInCalendarDays } from 'date-fns';
@@ -232,6 +232,15 @@ function OrganizationMemberRolesMigrationGroup(props: {
 
   const [confirmationOpen, setConfirmationOpen] = useState(false);
 
+  const saveCustomRoles = useCallback(() => {
+    // set temporary scopes as new role scopes
+    setNewRoleScopes({ ...temporaryScopes });
+  }, [setNewRoleScopes, temporaryScopes]);
+  const resetCustomRolesToPreviousSave = useCallback(() => {
+    // reset temporary scopes
+    setTemporaryScopes({ ...newRoleScopes });
+  }, [setTemporaryScopes, newRoleScopes]);
+
   async function onSubmit(data: MigrationFormValues) {
     try {
       const result = await migrate({
@@ -432,9 +441,9 @@ function OrganizationMemberRolesMigrationGroup(props: {
                     <Dialog
                       open={customAccessModalOpen}
                       onOpenChange={open => {
-                        // Reset temporary scopes when dialog is closed
+                        // Reset temporary scopes when dialog is being closed
                         if (!open) {
-                          setTemporaryScopes({ ...newRoleScopes });
+                          resetCustomRolesToPreviousSave();
                         }
                         setCustomAccessModalOpen(open);
                       }}
@@ -526,6 +535,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                             variant="outline"
                             onClick={() => {
                               setCustomAccessModalOpen(false);
+                              resetCustomRolesToPreviousSave();
                             }}
                           >
                             Cancel
@@ -540,8 +550,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                                 ...temporaryScopes.project,
                                 ...temporaryScopes.target,
                               ]);
-                              // set temporary scopes as new role scopes
-                              setNewRoleScopes({ ...temporaryScopes });
+                              saveCustomRoles();
                               // close the dialog
                               setCustomAccessModalOpen(false);
                             }}
