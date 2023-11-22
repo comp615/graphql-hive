@@ -1,29 +1,5 @@
 import { type MigrationExecutor } from '../pg-migrator';
 
-/*
-
-## UI
-
-  - Allow to use "Change Permissions" modal if role is not assigned to a member.
-  - An option to see user's access scopes when there is no role assigned.
-  - Make table smaller (it's too tall and too bulky) - use a similar table as in Insights (operations
-  list).
-  - Sort the list by name ASC (by default) but allow to sort by role name.
-  - Display role's name in the members list.
-
-## Plan
-
-1. Create default roles.
-2. If a role matches the user's access scopes, assign it to the user.
-3. If we can't find a role for the user, ignore it.
-4. After 90 days, all users without a role will be assigned to a read-only role (forced by the system).
-
-## Migration
-
-Create a migration wizard that groups users by access scopes and allows to assign them to a new role.
-
-*/
-
 export default {
   name: '2023.11.20T10-00-00.organization-member-roles.ts',
   noTransaction: true,

@@ -69,7 +69,9 @@ export const roleFormSchema = z.object({
     .trim()
     .min(2, 'Too short')
     .max(256, 'Description is too long'),
-  scopes: z.array(z.string()),
+  organizationScopes: z.array(z.string()),
+  projectScopes: z.array(z.string()),
+  targetScopes: z.array(z.string()),
 });
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
@@ -126,11 +128,9 @@ function OrganizationMemberRoleEditor(props: {
     defaultValues: {
       name: role.name,
       description: role.description,
-      scopes: [
-        ...role.organizationAccessScopes,
-        ...role.projectAccessScopes,
-        ...role.targetAccessScopes,
-      ],
+      organizationScopes: [...role.organizationAccessScopes],
+      projectScopes: [...role.projectAccessScopes],
+      targetScopes: [...role.targetAccessScopes],
     },
     disabled: updateMemberRoleState.fetching,
   });
@@ -146,8 +146,9 @@ function OrganizationMemberRoleEditor(props: {
   ]);
 
   const updateScopes = useCallback(() => {
-    const scopes = [...targetScopes, ...projectScopes, ...organizationScopes];
-    form.setValue('scopes', scopes);
+    form.setValue('organizationScopes', [...organizationScopes]);
+    form.setValue('projectScopes', [...projectScopes]);
+    form.setValue('targetScopes', [...targetScopes]);
   }, [targetScopes, projectScopes, organizationScopes, form]);
 
   useEffect(() => {
@@ -156,7 +157,6 @@ function OrganizationMemberRoleEditor(props: {
 
   const updateTargetScopes = useCallback(
     (scopes: TargetAccessScope[]) => {
-      console.log('updating target scopes', scopes);
       setTargetScopes(scopes);
     },
     [targetScopes, updateScopes],
@@ -164,7 +164,6 @@ function OrganizationMemberRoleEditor(props: {
 
   const updateProjectScopes = useCallback(
     (scopes: ProjectAccessScope[]) => {
-      console.log('updating project scopes', scopes);
       setProjectScopes(scopes);
     },
     [projectScopes, updateScopes],
@@ -172,7 +171,6 @@ function OrganizationMemberRoleEditor(props: {
 
   const updateOrganizationScopes = useCallback(
     (scopes: OrganizationAccessScope[]) => {
-      console.log('updating organization scopes', scopes);
       setOrganizationScopes(scopes);
     },
     [organizationScopes, updateScopes],
@@ -180,20 +178,19 @@ function OrganizationMemberRoleEditor(props: {
 
   async function onSubmit(data: RoleFormValues) {
     try {
-      console.log('sending', data.scopes);
       const result = await updateMemberRole({
         input: {
           organization: props.organizationCleanId,
           role: role.id,
           name: data.name,
           description: data.description,
-          organizationAccessScopes: data.scopes.filter(scope =>
+          organizationAccessScopes: data.organizationScopes.filter(scope =>
             Object.values(OrganizationAccessScope).includes(scope as OrganizationAccessScope),
           ) as OrganizationAccessScope[],
-          projectAccessScopes: data.scopes.filter(scope =>
+          projectAccessScopes: data.projectScopes.filter(scope =>
             Object.values(ProjectAccessScope).includes(scope as ProjectAccessScope),
           ) as ProjectAccessScope[],
-          targetAccessScopes: data.scopes.filter(scope =>
+          targetAccessScopes: data.targetScopes.filter(scope =>
             Object.values(TargetAccessScope).includes(scope as TargetAccessScope),
           ) as TargetAccessScope[],
         },
@@ -287,58 +284,40 @@ function OrganizationMemberRoleEditor(props: {
               />
             </div>
             <div className="grow">
-              <FormField
-                control={form.control}
-                name="scopes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Permissions</FormLabel>
-                    <FormControl>
-                      <Tabs defaultValue="Organization" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                          <TabsTrigger disabled={field.disabled} value="Organization">
-                            Organization
-                          </TabsTrigger>
-                          <TabsTrigger disabled={field.disabled} value="Projects">
-                            Projects
-                          </TabsTrigger>
-                          <TabsTrigger disabled={field.disabled} value="Targets">
-                            Targets
-                          </TabsTrigger>
-                        </TabsList>
-                        <PermissionsSpace
-                          title="Organization"
-                          scopes={scopes.organization}
-                          initialScopes={organizationScopes}
-                          onChange={updateOrganizationScopes}
-                          checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
-                          isReadOnly={field.disabled}
-                          noDowngrade={noDowngrade}
-                        />
-                        <PermissionsSpace
-                          title="Projects"
-                          scopes={scopes.project}
-                          initialScopes={projectScopes}
-                          onChange={updateProjectScopes}
-                          checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
-                          isReadOnly={field.disabled}
-                          noDowngrade={noDowngrade}
-                        />
-                        <PermissionsSpace
-                          title="Targets"
-                          scopes={scopes.target}
-                          initialScopes={targetScopes}
-                          onChange={updateTargetScopes}
-                          checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
-                          isReadOnly={field.disabled}
-                          noDowngrade={noDowngrade}
-                        />
-                      </Tabs>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel>Permissions</FormLabel>
+                <Tabs defaultValue="Organization" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="Organization">Organization</TabsTrigger>
+                    <TabsTrigger value="Projects">Projects</TabsTrigger>
+                    <TabsTrigger value="Targets">Targets</TabsTrigger>
+                  </TabsList>
+                  <PermissionsSpace
+                    title="Organization"
+                    scopes={scopes.organization}
+                    initialScopes={organizationScopes}
+                    onChange={updateOrganizationScopes}
+                    checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
+                    noDowngrade={noDowngrade}
+                  />
+                  <PermissionsSpace
+                    title="Projects"
+                    scopes={scopes.project}
+                    initialScopes={projectScopes}
+                    onChange={updateProjectScopes}
+                    checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
+                    noDowngrade={noDowngrade}
+                  />
+                  <PermissionsSpace
+                    title="Targets"
+                    scopes={scopes.target}
+                    initialScopes={targetScopes}
+                    onChange={updateTargetScopes}
+                    checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
+                    noDowngrade={noDowngrade}
+                  />
+                </Tabs>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -413,7 +392,9 @@ function OrganizationMemberRoleCreator(props: {
     defaultValues: {
       name: '',
       description: '',
-      scopes: [],
+      organizationScopes: [],
+      projectScopes: [],
+      targetScopes: [],
     },
     disabled: createMemberRoleState.fetching,
   });
@@ -423,8 +404,9 @@ function OrganizationMemberRoleCreator(props: {
   const [organizationScopes, setOrganizationScopes] = useState<OrganizationAccessScope[]>([]);
 
   const updateScopes = useCallback(() => {
-    const scopes = [...targetScopes, ...projectScopes, ...organizationScopes];
-    form.setValue('scopes', scopes);
+    form.setValue('organizationScopes', [...organizationScopes]);
+    form.setValue('projectScopes', [...projectScopes]);
+    form.setValue('targetScopes', [...targetScopes]);
   }, [targetScopes, projectScopes, organizationScopes, form]);
 
   useEffect(() => {
@@ -459,13 +441,13 @@ function OrganizationMemberRoleCreator(props: {
           organization: props.organizationCleanId,
           name: data.name,
           description: data.description,
-          organizationAccessScopes: data.scopes.filter(scope =>
+          organizationAccessScopes: data.organizationScopes.filter(scope =>
             Object.values(OrganizationAccessScope).includes(scope as OrganizationAccessScope),
           ) as OrganizationAccessScope[],
-          projectAccessScopes: data.scopes.filter(scope =>
+          projectAccessScopes: data.organizationScopes.filter(scope =>
             Object.values(ProjectAccessScope).includes(scope as ProjectAccessScope),
           ) as ProjectAccessScope[],
-          targetAccessScopes: data.scopes.filter(scope =>
+          targetAccessScopes: data.organizationScopes.filter(scope =>
             Object.values(TargetAccessScope).includes(scope as TargetAccessScope),
           ) as TargetAccessScope[],
         },
@@ -550,55 +532,37 @@ function OrganizationMemberRoleCreator(props: {
               />
             </div>
             <div className="grow">
-              <FormField
-                control={form.control}
-                name="scopes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Permissions</FormLabel>
-                    <FormControl>
-                      <Tabs defaultValue="Organization" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                          <TabsTrigger disabled={field.disabled} value="Organization">
-                            Organization
-                          </TabsTrigger>
-                          <TabsTrigger disabled={field.disabled} value="Projects">
-                            Projects
-                          </TabsTrigger>
-                          <TabsTrigger disabled={field.disabled} value="Targets">
-                            Targets
-                          </TabsTrigger>
-                        </TabsList>
-                        <PermissionsSpace
-                          title="Organization"
-                          scopes={scopes.organization}
-                          initialScopes={organizationScopes}
-                          onChange={updateOrganizationScopes}
-                          checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
-                          isReadOnly={field.disabled}
-                        />
-                        <PermissionsSpace
-                          title="Projects"
-                          scopes={scopes.project}
-                          initialScopes={projectScopes}
-                          onChange={updateProjectScopes}
-                          checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
-                          isReadOnly={field.disabled}
-                        />
-                        <PermissionsSpace
-                          title="Targets"
-                          scopes={scopes.target}
-                          initialScopes={targetScopes}
-                          onChange={updateTargetScopes}
-                          checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
-                          isReadOnly={field.disabled}
-                        />
-                      </Tabs>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel>Permissions</FormLabel>
+                <Tabs defaultValue="Organization" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="Organization">Organization</TabsTrigger>
+                    <TabsTrigger value="Projects">Projects</TabsTrigger>
+                    <TabsTrigger value="Targets">Targets</TabsTrigger>
+                  </TabsList>
+                  <PermissionsSpace
+                    title="Organization"
+                    scopes={scopes.organization}
+                    initialScopes={organizationScopes}
+                    onChange={updateOrganizationScopes}
+                    checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
+                  />
+                  <PermissionsSpace
+                    title="Projects"
+                    scopes={scopes.project}
+                    initialScopes={projectScopes}
+                    onChange={updateProjectScopes}
+                    checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
+                  />
+                  <PermissionsSpace
+                    title="Targets"
+                    scopes={scopes.target}
+                    initialScopes={targetScopes}
+                    onChange={updateTargetScopes}
+                    checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
+                  />
+                </Tabs>
+              </div>
             </div>
           </div>
           <DialogFooter>
