@@ -108,13 +108,13 @@ function PageContent(props: {
     [page, setPage, router],
   );
 
-  useOrganizationAccess({
+  const hasAccess = useOrganizationAccess({
     scope: OrganizationAccessScope.Members,
     redirect: true,
     member: organization.me,
   });
 
-  if (!organization) {
+  if (!organization || !hasAccess) {
     return null;
   }
 

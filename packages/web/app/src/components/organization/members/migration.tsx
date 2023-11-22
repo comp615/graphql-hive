@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { differenceInCalendarDays, set } from 'date-fns';
-import { PartyPopperIcon } from 'lucide-react';
+import { differenceInCalendarDays } from 'date-fns';
+import { InfoIcon, PartyPopperIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from 'urql';
 import { z } from 'zod';
@@ -94,28 +94,24 @@ export function MemberRoleMigrationStickyNote(props: {
   }
 
   return (
-    <div className="bg-background text-foreground  rounded-md border px-3 py-2 shadow-lg">
-      <div className="flex w-full items-center justify-between gap-x-2">
-        <div>
-          <div className="text-sm font-semibold">Assign roles to all members</div>
-          <div className="text-sm opacity-90">
-            Admins, you have {daysLeft} {daysLeft > 1 ? 'days' : 'day'} left to assign roles.
-          </div>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link
-            href={{
-              pathname: '/[organizationId]/view/members',
-              query: {
-                organizationId: organization.cleanId,
-                page: 'migration',
-              },
-            }}
-          >
-            Migrate
-          </Link>
-        </Button>
-      </div>
+    <div className="flex flex-row items-center gap-x-2 rounded-md bg-orange-900/40 px-3 py-2">
+      <InfoIcon className="h-4 w-4" />
+      <span className="text-sm">
+        {daysLeft} {daysLeft > 1 ? 'days' : 'day'} left to{' '}
+        <Link
+          className="underline underline-offset-4"
+          href={{
+            pathname: '/[organizationId]/view/members',
+            query: {
+              organizationId: organization.cleanId,
+              page: 'migration',
+            },
+          }}
+        >
+          assign roles
+        </Link>{' '}
+        to all members
+      </span>
     </div>
   );
 }
@@ -283,7 +279,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
         toast({
           title: 'Members migrated',
           description:
-            'roleId' in data ? `Members migrated to existing role` : 'Members migrated to new role',
+            'roleId' in data ? 'Members migrated to existing role' : 'Members migrated to new role',
         });
         setConfirmationOpen(false);
       }
@@ -592,7 +588,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                 <AlertDialogAction
                   disabled={migrationState.fetching}
                   onClick={async event => {
-                    form.handleSubmit(onSubmit)(event);
+                    void form.handleSubmit(onSubmit)(event);
                   }}
                 >
                   Continue
