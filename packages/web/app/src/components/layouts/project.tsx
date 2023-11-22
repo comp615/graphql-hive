@@ -9,7 +9,6 @@ import { CreateTargetModal } from '@/components/v2/modals';
 import { FragmentType, graphql, useFragment } from '@/gql';
 import { canAccessProject, ProjectAccessScope, useProjectAccess } from '@/lib/access/project';
 import { useRouteSelector, useToggle } from '@/lib/hooks';
-import { MemberRoleMigrationStickyNote } from '../organization/members/migration';
 import { ProjectMigrationToast } from '../project/migration-toast';
 
 export enum Page {

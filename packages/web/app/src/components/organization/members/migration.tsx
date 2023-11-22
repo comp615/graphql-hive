@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { differenceInCalendarDays } from 'date-fns';
@@ -69,12 +69,13 @@ export function MemberRoleMigrationStickyNote(props: {
   const isAdmin = organization?.me.isAdmin;
   const unassignedMembersToMigrateCount = organization?.unassignedMembersToMigrate.length;
   const migrationDeadline = __frontend_env.migrations.member_roles_deadline;
+  const daysLeft = useRef<number>();
 
-  const daysLeft = useMemo(
-    () =>
-      migrationDeadline ? differenceInCalendarDays(new Date(migrationDeadline), new Date()) : 0,
-    [],
-  );
+  if (typeof daysLeft.current !== 'number') {
+    daysLeft.current = migrationDeadline
+      ? differenceInCalendarDays(new Date(migrationDeadline), new Date())
+      : 0;
+  }
 
   const isMembersView = router.route.startsWith('/[organizationId]/view/members');
 
@@ -86,7 +87,7 @@ export function MemberRoleMigrationStickyNote(props: {
     // Migration deadline is not set
     !migrationDeadline ||
     // Migration deadline has passed
-    daysLeft <= 0 ||
+    daysLeft.current <= 0 ||
     // Component is rendered on the members page
     isMembersView
   ) {
@@ -97,7 +98,7 @@ export function MemberRoleMigrationStickyNote(props: {
     <div className="flex flex-row items-center gap-x-2 rounded-md bg-orange-900/40 px-3 py-2">
       <InfoIcon className="h-4 w-4" />
       <span className="text-sm">
-        {daysLeft} {daysLeft > 1 ? 'days' : 'day'} left to{' '}
+        {daysLeft.current} {daysLeft.current > 1 ? 'days' : 'day'} left to{' '}
         <Link
           className="underline underline-offset-4"
           href={{
@@ -207,11 +208,9 @@ function OrganizationMemberRolesMigrationGroup(props: {
       roleId: '',
       name: '',
       description: '',
-      scopes: [
-        ...memberGroup.organizationScopes,
-        ...memberGroup.projectScopes,
-        ...memberGroup.targetScopes,
-      ],
+      organizationScopes: [...memberGroup.organizationScopes],
+      projectScopes: [...memberGroup.projectScopes],
+      targetScopes: [...memberGroup.targetScopes],
     },
   });
   const [migrationState, migrate] = useMutation(OrganizationMemberRolesMigrationGroup_Migrate);
@@ -258,13 +257,14 @@ function OrganizationMemberRolesMigrationGroup(props: {
                   organization: props.organizationCleanId,
                   name: data.name,
                   description: data.description,
-                  organizationScopes: data.scopes.filter((s): s is OrganizationAccessScope =>
-                    Object.values(OrganizationAccessScope).includes(s as OrganizationAccessScope),
+                  organizationScopes: data.organizationScopes.filter(
+                    (s): s is OrganizationAccessScope =>
+                      Object.values(OrganizationAccessScope).includes(s as OrganizationAccessScope),
                   ),
-                  projectScopes: data.scopes.filter((s): s is ProjectAccessScope =>
+                  projectScopes: data.projectScopes.filter((s): s is ProjectAccessScope =>
                     Object.values(ProjectAccessScope).includes(s as ProjectAccessScope),
                   ),
-                  targetScopes: data.scopes.filter((s): s is TargetAccessScope =>
+                  targetScopes: data.targetScopes.filter((s): s is TargetAccessScope =>
                     Object.values(TargetAccessScope).includes(s as TargetAccessScope),
                   ),
                   members: data.members,
@@ -432,139 +432,116 @@ function OrganizationMemberRolesMigrationGroup(props: {
           />
           {isRoleSelected ? null : <div>/</div>}
           {isRoleSelected ? null : (
-            <FormField
-              control={form.control}
-              name="scopes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Dialog
-                      open={customAccessModalOpen}
-                      onOpenChange={open => {
-                        // Reset temporary scopes when dialog is being closed
-                        if (!open) {
-                          resetCustomRolesToPreviousSave();
-                        }
-                        setCustomAccessModalOpen(open);
-                      }}
-                    >
-                      <TooltipProvider>
-                        <Tooltip>
-                          <DialogTrigger asChild>
-                            <TooltipTrigger asChild>
-                              <Button
-                                onClick={() => {
-                                  setCustomAccessModalOpen(true);
-                                }}
-                                variant="outline"
-                              >
-                                Custom
-                              </Button>
-                            </TooltipTrigger>
-                          </DialogTrigger>
-                          <TooltipContent>
-                            See permissions of the users in this group and modify them if needed.
-                            <br />
-                            These permissions will be applied to the new role. You can change them
-                            later.
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <DialogContent className="max-w-[600px]">
-                        <DialogHeader>
-                          <DialogTitle>Permissions</DialogTitle>
-                          <DialogDescription>
-                            Adjusts the permissions of the users in this group. These permissions
-                            will be applied to the new role. You can change them later.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <Tabs defaultValue="Organization" className="w-full">
-                          <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger disabled={field.disabled} value="Organization">
-                              Organization
-                            </TabsTrigger>
-                            <TabsTrigger disabled={field.disabled} value="Projects">
-                              Projects
-                            </TabsTrigger>
-                            <TabsTrigger disabled={field.disabled} value="Targets">
-                              Targets
-                            </TabsTrigger>
-                          </TabsList>
-                          <PermissionsSpace
-                            title="Organization"
-                            scopes={scopes.organization}
-                            initialScopes={temporaryScopes.organization}
-                            onChange={scopes => {
-                              setTemporaryScopes(prev => ({
-                                ...prev,
-                                organization: scopes,
-                              }));
-                            }}
-                            checkAccess={() => true /* Yes, as only admins can perform migration */}
-                            isReadOnly={field.disabled}
-                          />
-                          <PermissionsSpace
-                            title="Projects"
-                            scopes={scopes.project}
-                            initialScopes={temporaryScopes.project}
-                            onChange={scopes => {
-                              setTemporaryScopes(prev => ({
-                                ...prev,
-                                project: scopes,
-                              }));
-                            }}
-                            checkAccess={() => true}
-                            isReadOnly={field.disabled}
-                          />
-                          <PermissionsSpace
-                            title="Targets"
-                            scopes={scopes.target}
-                            initialScopes={temporaryScopes.target}
-                            onChange={scopes => {
-                              setTemporaryScopes(prev => ({
-                                ...prev,
-                                target: scopes,
-                              }));
-                            }}
-                            checkAccess={() => true}
-                            isReadOnly={field.disabled}
-                          />
-                        </Tabs>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setCustomAccessModalOpen(false);
-                              resetCustomRolesToPreviousSave();
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              // unassign role
-                              form.setValue('roleId', '');
-                              // save new scopes
-                              field.onChange([
-                                ...temporaryScopes.organization,
-                                ...temporaryScopes.project,
-                                ...temporaryScopes.target,
-                              ]);
-                              saveCustomRoles();
-                              // close the dialog
-                              setCustomAccessModalOpen(false);
-                            }}
-                          >
-                            Save
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </FormControl>
-                  <FormMessage className="absolute text-xs" />
-                </FormItem>
-              )}
-            />
+            <Dialog
+              open={customAccessModalOpen}
+              onOpenChange={open => {
+                // Reset temporary scopes when dialog is being closed
+                if (!open) {
+                  resetCustomRolesToPreviousSave();
+                }
+                setCustomAccessModalOpen(open);
+              }}
+            >
+              <TooltipProvider>
+                <Tooltip>
+                  <DialogTrigger asChild>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => {
+                          setCustomAccessModalOpen(true);
+                        }}
+                        variant="outline"
+                      >
+                        Custom
+                      </Button>
+                    </TooltipTrigger>
+                  </DialogTrigger>
+                  <TooltipContent>
+                    See permissions of the users in this group and modify them if needed.
+                    <br />
+                    These permissions will be applied to the new role. You can change them later.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <DialogContent className="max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Permissions</DialogTitle>
+                  <DialogDescription>
+                    Adjusts the permissions of the users in this group. These permissions will be
+                    applied to the new role. You can change them later.
+                  </DialogDescription>
+                </DialogHeader>
+                <Tabs defaultValue="Organization" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="Organization">Organization</TabsTrigger>
+                    <TabsTrigger value="Projects">Projects</TabsTrigger>
+                    <TabsTrigger value="Targets">Targets</TabsTrigger>
+                  </TabsList>
+                  <PermissionsSpace
+                    title="Organization"
+                    scopes={scopes.organization}
+                    initialScopes={temporaryScopes.organization}
+                    onChange={scopes => {
+                      setTemporaryScopes(prev => ({
+                        ...prev,
+                        organization: scopes,
+                      }));
+                    }}
+                    checkAccess={() => true /* Yes, as only admins can perform migration */}
+                  />
+                  <PermissionsSpace
+                    title="Projects"
+                    scopes={scopes.project}
+                    initialScopes={temporaryScopes.project}
+                    onChange={scopes => {
+                      setTemporaryScopes(prev => ({
+                        ...prev,
+                        project: scopes,
+                      }));
+                    }}
+                    checkAccess={() => true}
+                  />
+                  <PermissionsSpace
+                    title="Targets"
+                    scopes={scopes.target}
+                    initialScopes={temporaryScopes.target}
+                    onChange={scopes => {
+                      setTemporaryScopes(prev => ({
+                        ...prev,
+                        target: scopes,
+                      }));
+                    }}
+                    checkAccess={() => true}
+                  />
+                </Tabs>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCustomAccessModalOpen(false);
+                      resetCustomRolesToPreviousSave();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      // unassign role
+                      form.setValue('roleId', '');
+                      // save new scopes
+                      form.setValue('organizationScopes', [...temporaryScopes.organization]);
+                      form.setValue('projectScopes', [...temporaryScopes.project]);
+                      form.setValue('targetScopes', [...temporaryScopes.target]);
+                      saveCustomRoles();
+                      // close the dialog
+                      setCustomAccessModalOpen(false);
+                    }}
+                  >
+                    Save
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
         </td>
         <td className="py-4 text-center">
