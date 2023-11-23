@@ -39,7 +39,7 @@ export function ChangePermissionsModal({
   return (
     <Modal open={isOpen} onOpenChange={toggleModalOpen} className="w-[600px]">
       <form className="flex w-full flex-col items-center gap-5" onSubmit={manager.submit}>
-        <Heading>Permissions</Heading>
+        <Heading>Permissions (legacy)</Heading>
         <Tabs defaultValue="Organization" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="Organization">Organization</TabsTrigger>

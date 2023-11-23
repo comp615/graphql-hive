@@ -465,7 +465,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
               </TooltipProvider>
               <DialogContent className="max-w-[600px]">
                 <DialogHeader>
-                  <DialogTitle>Permissions</DialogTitle>
+                  <DialogTitle>Permissions (legacy)</DialogTitle>
                   <DialogDescription>
                     Adjusts the permissions of the users in this group. These permissions will be
                     applied to the new role. You can change them later.
