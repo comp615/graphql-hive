@@ -211,7 +211,36 @@ function OrganizationMemberRoleSwitcher(props: {
           // - the new role is not the current role
           //
 
-          return canAssign && !isCurrentRole;
+          if (isCurrentRole) {
+            return {
+              active: false,
+              reason: 'This is the current role',
+            };
+          }
+
+          if (canAssign) {
+            return {
+              active: true,
+            };
+          }
+
+          if (!hasAccessToScopesOfRole) {
+            return {
+              active: false,
+              reason: 'You do not have enough access to assign this role',
+            };
+          }
+
+          if (!newRoleHasMoreOrEqualAccess) {
+            return {
+              active: false,
+              reason: 'This role misses some permissions that the member has',
+            };
+          }
+
+          return {
+            active: false,
+          };
         }}
       />
       {!props.memberRoleId && member ? (

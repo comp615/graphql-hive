@@ -40,21 +40,17 @@ interface Props<T> {
   title: string;
   scopes: readonly Scope<T>[];
   initialScopes: readonly T[];
+  selectedScopes: readonly T[];
   onChange: (scopes: T[]) => void;
   checkAccess: (scope: T) => boolean;
-  isReadOnly?: boolean;
   noDowngrade?: boolean;
 }
 
-function isLowerOrEqualThen<T>(
-  targetScope: T,
-  sourceScope: T,
-  scopesInLowerToHigherOrder: readonly T[],
-) {
+function isLowerThen<T>(targetScope: T, sourceScope: T, scopesInLowerToHigherOrder: readonly T[]) {
   const sourceIndex = scopesInLowerToHigherOrder.indexOf(sourceScope);
   const targetIndex = scopesInLowerToHigherOrder.indexOf(targetScope);
 
-  return targetIndex <= sourceIndex;
+  return targetIndex < sourceIndex;
 }
 
 function matchScope<T, TDefault = string>(
@@ -94,13 +90,15 @@ export const PermissionScopeItem = <
 >(props: {
   scope: Scope<T>;
   checkAccess: (scope: T) => boolean;
+  initialScope: typeof NoAccess | T | undefined;
   selectedScope: typeof NoAccess | T | undefined;
-  isReadOnly: boolean;
   onChange: (scopes: T | typeof NoAccess) => void;
   canManageScope: boolean;
   noDowngrade?: boolean;
   possibleScope: T[];
 }): React.ReactElement => {
+  const initialScope = props.initialScope ?? NoAccess;
+
   const inner = (
     <div
       key={props.scope.name}
@@ -113,9 +111,7 @@ export const PermissionScopeItem = <
         <div
           className={clsx(
             'font-semibold text-white',
-            props.isReadOnly &&
-              props.selectedScope !== 'no-access' &&
-              props.canManageScope === false
+            props.selectedScope !== 'no-access' && props.canManageScope === false
               ? 'text-red-600'
               : null,
           )}
@@ -125,9 +121,7 @@ export const PermissionScopeItem = <
         <div
           className={clsx(
             'text-xs text-gray-400',
-            props.isReadOnly &&
-              props.selectedScope !== 'no-access' &&
-              props.canManageScope === false
+            props.selectedScope !== 'no-access' && props.canManageScope === false
               ? 'text-red-600'
               : null,
           )}
@@ -136,7 +130,7 @@ export const PermissionScopeItem = <
         </div>
       </div>
       <Select
-        disabled={!props.canManageScope || props.isReadOnly}
+        disabled={!props.canManageScope}
         value={props.selectedScope}
         onValueChange={value => {
           props.onChange(value as T | typeof NoAccess);
@@ -149,30 +143,33 @@ export const PermissionScopeItem = <
           {[
             { value: NoAccess, label: 'No access' },
             props.scope.mapping['read-only'] &&
-              (props.isReadOnly || props.checkAccess(props.scope.mapping['read-only'])) && {
+              props.checkAccess(props.scope.mapping['read-only']) && {
                 value: props.scope.mapping['read-only'],
                 label: 'Read-only',
               },
             props.scope.mapping['read-write'] &&
-              (props.isReadOnly || props.checkAccess(props.scope.mapping['read-write'])) && {
+              props.checkAccess(props.scope.mapping['read-write']) && {
                 value: props.scope.mapping['read-write'],
                 label: 'Read & write',
               },
           ]
             .filter(truthy)
             .map((item, _, all) => {
+              const isDisabled =
+                props.noDowngrade === true
+                  ? isLowerThen(
+                      item.value,
+                      initialScope,
+                      all.map(item => item.value),
+                    )
+                  : false;
+
               return (
                 <SelectItem
                   key={item.value}
                   value={item.value}
-                  disabled={
-                    props.noDowngrade === true &&
-                    isLowerOrEqualThen(
-                      item.value,
-                      props.selectedScope,
-                      all.map(item => item.value),
-                    )
-                  }
+                  disabled={isDisabled}
+                  title={isDisabled ? 'Cannot downgrade members' : undefined}
                 >
                   {item.label}
                 </SelectItem>
@@ -201,7 +198,7 @@ function PermissionsSpaceInner(props: Props<TargetAccessScope>): ReactElement<an
 function PermissionsSpaceInner<
   T extends OrganizationAccessScope | ProjectAccessScope | TargetAccessScope,
 >(props: Props<T>) {
-  const { title, scopes, initialScopes, onChange, checkAccess } = props;
+  const { title, scopes, initialScopes, selectedScopes, onChange, checkAccess } = props;
 
   return (
     <TabsContent value={title}>
@@ -216,27 +213,32 @@ function PermissionsSpaceInner<
           <PermissionScopeItem<T>
             scope={scope}
             key={scope.name}
+            initialScope={matchScope(
+              initialScopes,
+              NoAccess,
+              scope.mapping['read-only'],
+              scope.mapping['read-write'],
+            )}
             selectedScope={matchScope(
-              props.initialScopes,
+              selectedScopes,
               NoAccess,
               scope.mapping['read-only'],
               scope.mapping['read-write'],
             )}
             checkAccess={checkAccess}
-            isReadOnly={props.isReadOnly ?? false}
             possibleScope={possibleScope}
             canManageScope={possibleScope.some(checkAccess)}
             noDowngrade={props.noDowngrade}
             onChange={value => {
               if (value === NoAccess) {
                 // Remove all possible scopes
-                onChange(initialScopes.filter(scope => !possibleScope.includes(scope)));
+                onChange(selectedScopes.filter(scope => !possibleScope.includes(scope)));
                 return;
               }
               const isReadWrite = value === scope.mapping['read-write'];
 
               // Remove possible scopes
-              const newScopes = props.initialScopes.filter(scope => !possibleScope.includes(scope));
+              const newScopes = selectedScopes.filter(scope => !possibleScope.includes(scope));
 
               if (isReadWrite) {
                 newScopes.push(scope.mapping['read-write']);

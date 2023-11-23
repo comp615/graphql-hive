@@ -36,6 +36,12 @@ export function ChangePermissionsModal({
     passMemberScopes: true,
   });
 
+  const initialScopes = {
+    organization: [...manager.organizationScopes],
+    project: [...manager.projectScopes],
+    target: [...manager.targetScopes],
+  };
+
   return (
     <Modal open={isOpen} onOpenChange={toggleModalOpen} className="w-[600px]">
       <form className="flex w-full flex-col items-center gap-5" onSubmit={manager.submit}>
@@ -49,21 +55,24 @@ export function ChangePermissionsModal({
           <PermissionsSpace
             title="Organization"
             scopes={scopes.organization}
-            initialScopes={manager.organizationScopes}
+            initialScopes={initialScopes.organization}
+            selectedScopes={manager.organizationScopes}
             onChange={manager.setOrganizationScopes}
             checkAccess={manager.canAccessOrganization}
           />
           <PermissionsSpace
             title="Projects"
             scopes={scopes.project}
-            initialScopes={manager.projectScopes}
+            initialScopes={initialScopes.project}
+            selectedScopes={manager.projectScopes}
             onChange={manager.setProjectScopes}
             checkAccess={manager.canAccessProject}
           />
           <PermissionsSpace
             title="Targets"
             scopes={scopes.target}
-            initialScopes={manager.targetScopes}
+            initialScopes={initialScopes.target}
+            selectedScopes={manager.targetScopes}
             onChange={manager.setTargetScopes}
             checkAccess={manager.canAccessTarget}
           />

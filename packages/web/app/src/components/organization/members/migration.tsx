@@ -481,6 +481,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                     title="Organization"
                     scopes={scopes.organization}
                     initialScopes={temporaryScopes.organization}
+                    selectedScopes={temporaryScopes.organization}
                     onChange={scopes => {
                       setTemporaryScopes(prev => ({
                         ...prev,
@@ -493,6 +494,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                     title="Projects"
                     scopes={scopes.project}
                     initialScopes={temporaryScopes.project}
+                    selectedScopes={temporaryScopes.project}
                     onChange={scopes => {
                       setTemporaryScopes(prev => ({
                         ...prev,
@@ -505,6 +507,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
                     title="Targets"
                     scopes={scopes.target}
                     initialScopes={temporaryScopes.target}
+                    selectedScopes={temporaryScopes.target}
                     onChange={scopes => {
                       setTemporaryScopes(prev => ({
                         ...prev,

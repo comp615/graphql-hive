@@ -208,7 +208,10 @@ function MemberInvitationForm(props: {
                         defaultRole={
                           organization.memberRoles.find(r => r.id === field.value) ?? viewerRole
                         }
-                        isRoleActive={role => role.canInvite}
+                        isRoleActive={role => ({
+                          active: role.canInvite,
+                          reason: role.canInvite ? undefined : 'Not enough permissions',
+                        })}
                         onSelect={role => {
                           field.onChange(role.id);
                           field.onBlur();

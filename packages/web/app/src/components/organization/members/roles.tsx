@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { LockIcon, MoreHorizontalIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from 'urql';
@@ -135,6 +135,12 @@ function OrganizationMemberRoleEditor(props: {
     disabled: updateMemberRoleState.fetching,
   });
 
+  const initialScopes = {
+    organization: [...role.organizationAccessScopes],
+    project: [...role.projectAccessScopes],
+    target: [...role.targetAccessScopes],
+  };
+
   const [targetScopes, setTargetScopes] = useState<TargetAccessScope[]>([
     ...role.targetAccessScopes,
   ]);
@@ -145,35 +151,28 @@ function OrganizationMemberRoleEditor(props: {
     ...role.organizationAccessScopes,
   ]);
 
-  const updateScopes = useCallback(() => {
-    form.setValue('organizationScopes', [...organizationScopes]);
-    form.setValue('projectScopes', [...projectScopes]);
-    form.setValue('targetScopes', [...targetScopes]);
-  }, [targetScopes, projectScopes, organizationScopes, form]);
-
-  useEffect(() => {
-    updateScopes();
-  }, [updateScopes, targetScopes, projectScopes, organizationScopes]);
-
   const updateTargetScopes = useCallback(
     (scopes: TargetAccessScope[]) => {
       setTargetScopes(scopes);
+      form.setValue('targetScopes', [...scopes]);
     },
-    [targetScopes, updateScopes],
+    [targetScopes],
   );
 
   const updateProjectScopes = useCallback(
     (scopes: ProjectAccessScope[]) => {
       setProjectScopes(scopes);
+      form.setValue('projectScopes', [...scopes]);
     },
-    [projectScopes, updateScopes],
+    [projectScopes],
   );
 
   const updateOrganizationScopes = useCallback(
     (scopes: OrganizationAccessScope[]) => {
       setOrganizationScopes(scopes);
+      form.setValue('organizationScopes', [...scopes]);
     },
-    [organizationScopes, updateScopes],
+    [organizationScopes],
   );
 
   async function onSubmit(data: RoleFormValues) {
@@ -295,7 +294,8 @@ function OrganizationMemberRoleEditor(props: {
                   <PermissionsSpace
                     title="Organization"
                     scopes={scopes.organization}
-                    initialScopes={organizationScopes}
+                    initialScopes={initialScopes.organization}
+                    selectedScopes={organizationScopes}
                     onChange={updateOrganizationScopes}
                     checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
                     noDowngrade={noDowngrade}
@@ -303,7 +303,8 @@ function OrganizationMemberRoleEditor(props: {
                   <PermissionsSpace
                     title="Projects"
                     scopes={scopes.project}
-                    initialScopes={projectScopes}
+                    initialScopes={initialScopes.project}
+                    selectedScopes={projectScopes}
                     onChange={updateProjectScopes}
                     checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
                     noDowngrade={noDowngrade}
@@ -311,7 +312,8 @@ function OrganizationMemberRoleEditor(props: {
                   <PermissionsSpace
                     title="Targets"
                     scopes={scopes.target}
-                    initialScopes={targetScopes}
+                    initialScopes={initialScopes.target}
+                    selectedScopes={targetScopes}
                     onChange={updateTargetScopes}
                     checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
                     noDowngrade={noDowngrade}
@@ -403,35 +405,28 @@ function OrganizationMemberRoleCreator(props: {
   const [projectScopes, setProjectScopes] = useState<ProjectAccessScope[]>([]);
   const [organizationScopes, setOrganizationScopes] = useState<OrganizationAccessScope[]>([]);
 
-  const updateScopes = useCallback(() => {
-    form.setValue('organizationScopes', [...organizationScopes]);
-    form.setValue('projectScopes', [...projectScopes]);
-    form.setValue('targetScopes', [...targetScopes]);
-  }, [targetScopes, projectScopes, organizationScopes, form]);
-
-  useEffect(() => {
-    updateScopes();
-  }, [updateScopes, targetScopes, projectScopes, organizationScopes]);
-
   const updateTargetScopes = useCallback(
     (scopes: TargetAccessScope[]) => {
       setTargetScopes(scopes);
+      form.setValue('targetScopes', [...scopes]);
     },
-    [targetScopes, updateScopes],
+    [targetScopes],
   );
 
   const updateProjectScopes = useCallback(
     (scopes: ProjectAccessScope[]) => {
       setProjectScopes(scopes);
+      form.setValue('projectScopes', [...scopes]);
     },
-    [projectScopes, updateScopes],
+    [projectScopes],
   );
 
   const updateOrganizationScopes = useCallback(
     (scopes: OrganizationAccessScope[]) => {
       setOrganizationScopes(scopes);
+      form.setValue('organizationScopes', [...scopes]);
     },
-    [organizationScopes, updateScopes],
+    [organizationScopes],
   );
 
   async function onSubmit(data: RoleFormValues) {
@@ -444,10 +439,10 @@ function OrganizationMemberRoleCreator(props: {
           organizationAccessScopes: data.organizationScopes.filter(scope =>
             Object.values(OrganizationAccessScope).includes(scope as OrganizationAccessScope),
           ) as OrganizationAccessScope[],
-          projectAccessScopes: data.organizationScopes.filter(scope =>
+          projectAccessScopes: data.projectScopes.filter(scope =>
             Object.values(ProjectAccessScope).includes(scope as ProjectAccessScope),
           ) as ProjectAccessScope[],
-          targetAccessScopes: data.organizationScopes.filter(scope =>
+          targetAccessScopes: data.targetScopes.filter(scope =>
             Object.values(TargetAccessScope).includes(scope as TargetAccessScope),
           ) as TargetAccessScope[],
         },
@@ -543,21 +538,24 @@ function OrganizationMemberRoleCreator(props: {
                   <PermissionsSpace
                     title="Organization"
                     scopes={scopes.organization}
-                    initialScopes={organizationScopes}
+                    initialScopes={[]}
+                    selectedScopes={organizationScopes}
                     onChange={updateOrganizationScopes}
                     checkAccess={scope => canAccessScope(scope, me.organizationAccessScopes)}
                   />
                   <PermissionsSpace
                     title="Projects"
                     scopes={scopes.project}
-                    initialScopes={projectScopes}
+                    initialScopes={[]}
+                    selectedScopes={projectScopes}
                     onChange={updateProjectScopes}
                     checkAccess={scope => canAccessScope(scope, me.projectAccessScopes)}
                   />
                   <PermissionsSpace
                     title="Targets"
                     scopes={scopes.target}
-                    initialScopes={targetScopes}
+                    initialScopes={[]}
+                    selectedScopes={targetScopes}
                     onChange={updateTargetScopes}
                     checkAccess={scope => canAccessScope(scope, me.targetAccessScopes)}
                   />
@@ -677,12 +675,44 @@ function OrganizationMemberRoleRow(props: {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[160px]">
-            <DropdownMenuItem onClick={() => props.onEdit(props.role)} disabled={!role.canUpdate}>
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => props.onDelete(props.role)} disabled={!role.canDelete}>
-              Delete
-            </DropdownMenuItem>
+            <TooltipProvider>
+              <Tooltip delayDuration={200} {...(role.canUpdate ? { open: false } : {})}>
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={() => props.onEdit(props.role)}
+                    disabled={!role.canUpdate}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {role.canUpdate
+                    ? null
+                    : `You cannot edit this role as you don't have enough permissions.`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip delayDuration={200} {...(role.canDelete ? { open: false } : {})}>
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={() => props.onDelete(props.role)}
+                    disabled={!role.canDelete}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {role.canDelete
+                    ? null
+                    : `You cannot delete this role as ${
+                        role.membersCount > 0
+                          ? 'it has members.'
+                          : `you don't have enough permissions.`
+                      }`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </DropdownMenuContent>
         </DropdownMenu>
       </td>

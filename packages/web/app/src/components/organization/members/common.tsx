@@ -10,6 +10,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type Role<T> = {
@@ -21,7 +22,12 @@ type Role<T> = {
 export function RoleSelector<T>(props: {
   roles: readonly Role<T>[];
   defaultRole?: Role<T>;
-  isRoleActive(role: Role<T>): boolean;
+  isRoleActive(role: Role<T>):
+    | boolean
+    | {
+        active: boolean;
+        reason?: string;
+      };
   disabled?: boolean;
   onSelect(role: Role<T>): void | Promise<void>;
   /**
@@ -71,27 +77,40 @@ export function RoleSelector<T>(props: {
                 </CommandItem>
               ) : null}
               {props.roles.map(role => {
-                const isActive = props.isRoleActive(role);
+                const isRoleActiveResult = props.isRoleActive(role);
+                const isActive =
+                  typeof isRoleActiveResult === 'boolean'
+                    ? isRoleActiveResult
+                    : isRoleActiveResult.active;
+                const reason =
+                  typeof isRoleActiveResult === 'boolean' ? undefined : isRoleActiveResult.reason;
 
                 return (
-                  <CommandItem
-                    onSelect={() => {
-                      setPhase('busy');
-                      setOpen(false);
-                      void Promise.resolve(props.onSelect(role)).finally(() => {
-                        setPhase('idle');
-                      });
-                    }}
-                    key={role.id}
-                    className={cn(
-                      'flex cursor-pointer flex-col items-start space-y-1 px-4 py-2',
-                      isActive ? '' : 'cursor-not-allowed opacity-50',
-                    )}
-                    disabled={!isActive}
-                  >
-                    <p>{role.name}</p>
-                    <p className="text-muted-foreground text-sm">{role.description}</p>
-                  </CommandItem>
+                  <TooltipProvider key={role.id}>
+                    <Tooltip delayDuration={200} {...(isActive ? { open: false } : {})}>
+                      <TooltipTrigger className="w-full text-left">
+                        <CommandItem
+                          title={reason}
+                          onSelect={() => {
+                            setPhase('busy');
+                            setOpen(false);
+                            void Promise.resolve(props.onSelect(role)).finally(() => {
+                              setPhase('idle');
+                            });
+                          }}
+                          className={cn(
+                            'flex cursor-pointer flex-col items-start space-y-1 px-4 py-2',
+                            isActive ? '' : 'cursor-not-allowed opacity-50',
+                          )}
+                          disabled={!isActive}
+                        >
+                          <p>{role.name}</p>
+                          <p className="text-muted-foreground text-sm">{role.description}</p>
+                        </CommandItem>
+                      </TooltipTrigger>
+                      <TooltipContent>{reason}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 );
               })}
             </CommandGroup>
