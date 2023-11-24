@@ -41,22 +41,41 @@ When inviting a new member, you can select one of the roles available in your or
 ## Smooth Migration Story
 
 We tried to make the transition to the new system as smooth as possible, so we've come up with the
-following migration path:
+following migration story.
 
-1. First of all, members of your organization will keep their current permissions.
-2. Some of the members will be assigned to the `Admin` or `Viewer` roles, but only if their
-   permissions match the role's (e.g. a member has full access will be assigned to the `Admin`
-   role).
-3. Members that our system could't assign to any of the system roles, won't have any role assigned.
-4. Pending invitations won't be canceled, the invited members will be assigned to `Viewer` role
+**What we already did:**
+
+1. Some of your members were assigned by the system to the `Admin` or `Viewer` roles, but only if
+   their permissions matched the role's (e.g. a member has full access will be assigned to the
+   `Admin` role).
+2. Members that our system could't assign to any of the system roles, don't have any role assigned.
+3. Pending invitations are still available, the invited members will be assigned to `Viewer` role
    after accepting the invitation.
-5. Use Migration Wizard to assign roles to members, or to create custom roles for them. Migration
-   Wizard groups members by their permissions, so you can easily assign roles to multiple members at
-   once.
 
-![Migration wizard](/changelog/2023-12-05-member-roles/migration-wizard.png)
+**What you need to do:**
+
+1. Use Migration Wizard to assign roles to members, or to create custom roles for them.
+2. If you don't want to use Migration Wizard, you can assign roles manually for each member.
+
+Migration Wizard groups members by their permissions, so you can easily assign roles to multiple
+members at once.
 
 <Callout type="warning">
   The Migration Wizard will be available for next 60 days. After that time, all members without a
   role will be assigned to the `Viewer` role.
 </Callout>
+
+![Migration wizard](/changelog/2023-12-05-member-roles/migration-wizard.png)
+
+For an even smoother transition, we have introduced Role Suggestions. Simply hover over the 💡 icon
+to view a list of suggested roles along with their permission variances.
+
+![Suggested roles](/changelog/2023-12-05-member-roles/migration-role-hint.png)
+
+You can view the comprehensive differences between the recommended role and the existing permissions
+of the member group by hovering over the numbers.
+
+![Access diff of the suggested role](/changelog/2023-12-05-member-roles/migration-role-hint-details.png)
+
+We hope you'll enjoy the new feature and the migration process will be smooth and painless. As
+usual, in case of any questions, please open a support ticket and we'll be happy to help.
