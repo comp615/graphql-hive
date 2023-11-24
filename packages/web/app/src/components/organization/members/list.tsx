@@ -291,7 +291,7 @@ export const authProviderToIconAndTextMap: Record<
     icon: FaOpenid,
     text: 'OpenID Connect',
   },
-  [AuthProvider.Auth0]: {
+  [AuthProvider.UsernamePassword]: {
     icon: FaUserLock,
     text: 'Email & Password',
   },
