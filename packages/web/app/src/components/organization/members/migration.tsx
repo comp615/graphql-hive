@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { differenceInCalendarDays } from 'date-fns';
-import { InfoIcon, PartyPopperIcon } from 'lucide-react';
+import { InfoIcon, LightbulbIcon, PartyPopperIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from 'urql';
 import { z } from 'zod';
@@ -38,7 +38,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/components/ui/use-toast';
 import { FragmentType, graphql, useFragment } from '@/gql';
 import { OrganizationAccessScope, ProjectAccessScope, TargetAccessScope } from '@/gql/graphql';
-import { scopes } from '@/lib/access/common';
+import { Scope, scopes } from '@/lib/access/common';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PermissionsSpace } from '../Permissions';
 import { RoleSelector } from './common';
@@ -114,6 +114,209 @@ export function MemberRoleMigrationStickyNote(props: {
         to all members
       </span>
     </div>
+  );
+}
+
+function SimilarRoleScopes<T>(props: {
+  prefix: string;
+  definitions: readonly Scope<T>[];
+  scopes: readonly T[];
+}) {
+  if (props.scopes.length === 0) {
+    return null;
+  }
+
+  const groupedScopes = useRef<
+    {
+      name: string;
+      description: string;
+      readOnly: boolean;
+      readWrite: boolean;
+      hasBothOptions: boolean;
+    }[]
+  >();
+
+  if (!groupedScopes.current) {
+    groupedScopes.current = [];
+    for (const def of props.definitions) {
+      const readOnly = def.mapping['read-only']
+        ? props.scopes.includes(def.mapping['read-only'])
+        : false;
+      const readWrite = props.scopes.includes(def.mapping['read-write']);
+
+      if (readOnly || readWrite) {
+        groupedScopes.current.push({
+          name: def.name,
+          description: def.description,
+          readOnly,
+          readWrite,
+          hasBothOptions: !!def.mapping['read-only'],
+        });
+      }
+    }
+  }
+
+  return (
+    <>
+      {groupedScopes.current?.map(scope => {
+        return (
+          <div key={scope.name} className="flex flex-row items-center justify-between gap-x-4 pt-2">
+            <div>
+              <p className="text-xs font-semibold">
+                {props.prefix} - {scope.name}
+              </p>
+              <p className="text-xs text-gray-500">{scope.description}</p>
+            </div>
+            <div className="text-xs">
+              {scope.hasBothOptions ? (
+                <>
+                  {scope.readOnly && !scope.readWrite ? <div>Read</div> : null}
+                  {scope.readWrite && !scope.readOnly ? <div>Write</div> : null}
+                  {scope.readOnly && scope.readWrite ? <div>All access</div> : null}
+                </>
+              ) : scope.readWrite ? (
+                <div>All access</div>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function SimilarRoles(props: {
+  memberGroupOrganizationScopes: readonly OrganizationAccessScope[];
+  memberGroupProjectScopes: readonly ProjectAccessScope[];
+  memberGroupTargetScopes: readonly TargetAccessScope[];
+  roles: readonly {
+    id: string;
+    name: string;
+    description: string;
+    organizationAccessScopes: readonly OrganizationAccessScope[];
+    projectAccessScopes: readonly ProjectAccessScope[];
+    targetAccessScopes: readonly TargetAccessScope[];
+  }[];
+}) {
+  return (
+    <>
+      <h4 className="mb-2 text-sm font-medium leading-none">Similar roles</h4>
+      <p className="text-xs text-gray-400">
+        Maybe some of the existing roles are similar to the one you are about to create?
+      </p>
+      <div className="my-4 h-[1px] w-full bg-gray-900" />
+      <div className="space-y-4 text-sm">
+        {props.roles.map(role => {
+          const downgrade = {
+            organization: props.memberGroupOrganizationScopes.filter(
+              scope => !role.organizationAccessScopes.includes(scope),
+            ),
+            project: props.memberGroupProjectScopes.filter(
+              scope => !role.projectAccessScopes.includes(scope),
+            ),
+            target: props.memberGroupTargetScopes.filter(
+              scope => !role.targetAccessScopes.includes(scope),
+            ),
+          };
+          const upgrade = {
+            organization: role.organizationAccessScopes.filter(
+              scope => !props.memberGroupOrganizationScopes.includes(scope),
+            ),
+            project: role.projectAccessScopes.filter(
+              scope => !props.memberGroupProjectScopes.includes(scope),
+            ),
+            target: role.targetAccessScopes.filter(
+              scope => !props.memberGroupTargetScopes.includes(scope),
+            ),
+          };
+
+          const downgradeCount =
+            downgrade.organization.length + downgrade.project.length + downgrade.target.length;
+          const upgradeCount =
+            upgrade.organization.length + upgrade.project.length + upgrade.target.length;
+
+          return (
+            <div key={role.id} className="flex flex-row items-center justify-between">
+              <div className="w-auto flex-none">
+                <div>{role.name}</div>
+                {/* <div className="max-w-[150px] truncate whitespace-nowrap break-words text-xs text-gray-400">
+                  {role.description}
+                </div> */}
+              </div>
+              <div className="flex w-[50px] shrink-0 flex-row items-center justify-end gap-x-2">
+                {upgradeCount > 0 ? (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="text-emerald-500">{'+' + upgradeCount}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-semibold">
+                          Members would <span className="text-emerald-500">gain</span> the following
+                          permissions:
+                        </p>
+                        <div className="space-y-2 divide-y-[1px] divide-gray-500/20">
+                          <SimilarRoleScopes
+                            definitions={scopes.organization}
+                            scopes={upgrade.organization}
+                            prefix="Organization"
+                          />
+                          <SimilarRoleScopes
+                            definitions={scopes.project}
+                            scopes={upgrade.project}
+                            prefix="Projects"
+                          />
+                          <SimilarRoleScopes
+                            definitions={scopes.target}
+                            scopes={upgrade.target}
+                            prefix="Targets"
+                          />
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+                {upgradeCount > 0 && downgradeCount > 0 ? (
+                  <div className="text-gray-500">/</div>
+                ) : null}
+                {downgradeCount > 0 ? (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="text-red-500">{'-' + downgradeCount}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-semibold">
+                          Members would <span className="text-red-500">lose</span> the following
+                          permissions:
+                        </p>
+                        <div className="space-y-2 divide-y-[1px] divide-gray-500/20">
+                          <SimilarRoleScopes
+                            definitions={scopes.organization}
+                            scopes={upgrade.organization}
+                            prefix="Organization"
+                          />
+                          <SimilarRoleScopes
+                            definitions={scopes.project}
+                            scopes={upgrade.project}
+                            prefix="Projects"
+                          />
+                          <SimilarRoleScopes
+                            definitions={scopes.target}
+                            scopes={upgrade.target}
+                            prefix="Targets"
+                          />
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -193,6 +396,9 @@ function OrganizationMemberRolesMigrationGroup(props: {
     id: string;
     name: string;
     description: string;
+    organizationAccessScopes: readonly OrganizationAccessScope[];
+    projectAccessScopes: readonly ProjectAccessScope[];
+    targetAccessScopes: readonly TargetAccessScope[];
   }[];
 }) {
   const memberGroup = useFragment(
@@ -357,7 +563,7 @@ function OrganizationMemberRolesMigrationGroup(props: {
           />
         </td>
         <td className="py-4 text-center text-sm">
-          <HoverCard>
+          <HoverCard openDelay={200}>
             <HoverCardTrigger asChild>
               <Button variant="link">
                 {memberGroup.members.length}{' '}
@@ -547,6 +753,21 @@ function OrganizationMemberRolesMigrationGroup(props: {
             </Dialog>
           )}
         </td>
+        <td className="py-4 text-center text-yellow-500">
+          <HoverCard openDelay={200}>
+            <HoverCardTrigger asChild>
+              <LightbulbIcon className="h-5 w-5 cursor-pointer" />
+            </HoverCardTrigger>
+            <HoverCardContent side="left" className="min-w-[350px] text-left">
+              <SimilarRoles
+                roles={props.roles}
+                memberGroupOrganizationScopes={newRoleScopes.organization}
+                memberGroupProjectScopes={newRoleScopes.project}
+                memberGroupTargetScopes={newRoleScopes.target}
+              />
+            </HoverCardContent>
+          </HoverCard>
+        </td>
         <td className="py-4 text-center">
           <AlertDialog
             open={confirmationOpen}
@@ -603,6 +824,9 @@ const OrganizationMemberRolesMigration_OrganizationFragment = graphql(`
       id
       name
       description
+      organizationAccessScopes
+      projectAccessScopes
+      targetAccessScopes
     }
     unassignedMembersToMigrate {
       id
@@ -641,6 +865,7 @@ export function OrganizationMemberRolesMigration(props: {
               <th className="px-2 py-4 text-left text-sm font-semibold">Description</th>
               <th className="w-[120px] py-4 text-center text-sm font-semibold">Members</th>
               <th className="w-[260px] py-4 text-center text-sm font-semibold">Access</th>
+              <th className="w-5 py-4" />
               <th className="w-32 py-4 text-center text-sm font-semibold">Action</th>
             </tr>
           </thead>
