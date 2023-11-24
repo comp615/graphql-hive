@@ -1,0 +1,62 @@
+---
+title: Introducing Member Roles
+description:
+  Assign roles to members of your organization or create custom roles that fit your team perfectly
+date: 2023-12-05
+authors: [kamil]
+---
+
+import { Callout } from 'nextra-theme-docs'
+
+We're thrilled to announce a significant update to our platform, bringing you more control and
+flexibility in managing your organization. Starting today, you can assign roles to members of your
+organization or create custom roles that fit your team perfectly.
+
+![Member list](/changelog/2023-12-05-member-roles/org-members.png)
+
+## System roles
+
+System roles are predefined roles that cannot be modified or deleted. There are two system roles:
+
+- **Admin** - has full access to all organization resources, including billing and team management.
+- **Viewer** - has read-only access to the registry, usage analytics and basic organization
+  resources.
+
+![Roles management view](/changelog/2023-12-05-member-roles/org-roles.png)
+
+## Custom roles
+
+Users with access to the organization members page can create custom roles. As Admin and Viewer
+roles are not enough to cover all possible scenarios, custom roles allow you to create a role that
+fits your team perfectly.
+
+![Role creator](/changelog/2023-12-05-member-roles/org-custom-role.png)
+
+## Member invitation
+
+When inviting a new member, you can select one of the roles available in your organization.
+
+![Invitation form](/changelog/2023-12-05-member-roles/org-invite-member.png)
+
+## Smooth Migration Story
+
+We tried to make the transition to the new system as smooth as possible, so we've come up with the
+following migration path:
+
+1. First of all, members of your organization will keep their current permissions.
+2. Some of the members will be assigned to the `Admin` or `Viewer` roles, but only if their
+   permissions match the role's (e.g. a member has full access will be assigned to the `Admin`
+   role).
+3. Members that our system could't assign to any of the system roles, won't have any role assigned.
+4. Pending invitations won't be canceled, the invited members will be assigned to `Viewer` role
+   after accepting the invitation.
+5. Use Migration Wizard to assign roles to members, or to create custom roles for them. Migration
+   Wizard groups members by their permissions, so you can easily assign roles to multiple members at
+   once.
+
+![Migration wizard](/changelog/2023-12-05-member-roles/migration-wizard.png)
+
+<Callout type="warning">
+  The Migration Wizard will be available for next 60 days. After that time, all members without a
+  role will be assigned to the `Viewer` role.
+</Callout>
