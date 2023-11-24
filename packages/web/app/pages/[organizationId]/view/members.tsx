@@ -79,7 +79,7 @@ function PageContent(props: {
       : typeof window === 'undefined'
         ? null
         : // we do it because sometimes useRouter().query.page is undefined when adding a role...
-          (new URL(window.location.pathname).searchParams.get('page') as SubPage | null) ?? null;
+          (new URL(window.location.href).searchParams.get('page') as SubPage | null) ?? null;
   const [page, setPage] = useState<SubPage>(pageFromUrl ?? 'list');
   const changePage = useCallback(
     (newPage: SubPage) => {
